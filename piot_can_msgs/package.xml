@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format2.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>piot_can_msg</name>
+  <name>piot_can_msgs</name>
   <version>1.0.0</version>
   <description>The piot_can_msg node</description>
   <maintainer email="rkd1037@piot.co.kr">piot</maintainer>
