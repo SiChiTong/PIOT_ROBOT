@@ -129,7 +129,7 @@ class PiotConverter(Node):
 			
 		odom_stamp.header.stamp = self.current_time
 		odom_stamp.header.frame_id = 'odom'
-		odom_stamp.child_frame_id = 'base_link'
+		odom_stamp.child_frame_id = 'base_footprint'
 			
 		odom_stamp.transform.translation.x = self.x
 		odom_stamp.transform.translation.y = self.y
