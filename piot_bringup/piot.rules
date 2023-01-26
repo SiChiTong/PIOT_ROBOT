@@ -1,0 +1,7 @@
+# set the udev rule , make the rplidar's device_port be fixed by RPLIDAR
+#
+KERNEL=="ttyUSB*", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", MODE:="0777", SYMLINK+="RPLIDAR"
+
+# set the udev rule , make the Wit-Motion IMU's device_port be fixed by AHRS
+#
+KERNEL=="ttyUSB*", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", MODE:="0777", SYMLINK+="IMU"
