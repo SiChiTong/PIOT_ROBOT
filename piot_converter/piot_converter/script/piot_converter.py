@@ -52,7 +52,7 @@ class PiotConverter(Node):
 		self.mode = Bool()
 		self.mode_flag = True
 	
-		self.odom_pub = self.create_publisher(Odometry, 'odom', qos)
+		self.odom_pub = self.create_publisher(Odometry, '/wheel/odometry', qos)
 		self.ctrl_fb_sub = self.create_subscription(CtrlFb, 'ctrl_fb', self.ctrl_fb_callback, qos)
 		self.odom_broadcaster = TransformBroadcaster(self)
 		self.x = 0.0
@@ -124,24 +124,7 @@ class PiotConverter(Node):
 		self.th += delta_th
 			
 		q = quaternion_from_euler(0,0,self.th)
-		odom_stamp = TransformStamped()
-		odom = Odometry()
-			
-		odom_stamp.header.stamp = self.current_time
-		odom_stamp.header.frame_id = 'odom'
-		odom_stamp.child_frame_id = 'base_footprint'
-			
-		odom_stamp.transform.translation.x = self.x
-		odom_stamp.transform.translation.y = self.y
-		odom_stamp.transform.translation.z = 0.0
-			
-		odom_stamp.transform.rotation.x = q[0]
-		odom_stamp.transform.rotation.y = q[1]
-		odom_stamp.transform.rotation.z = q[2]
-		odom_stamp.transform.rotation.w = q[3]
-			
-		self.odom_broadcaster.sendTransform(odom_stamp)
-			
+		odom = Odometry()			
 			
 		odom.header.stamp = self.current_time
 		odom.header.frame_id = 'odom'
