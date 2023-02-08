@@ -60,15 +60,7 @@ def generate_launch_description():
                          'inverted': inverted, 
                          'angle_compensate': angle_compensate,
                          'scan_mode':scan_mode}],
-            output='screen'),
-        
-        Node(
-            package='tf2_ros',
-            executable='static_transform_publisher',
-            name='rplidar_scan_publisher',
-            output='screen',
-            arguments=['0','0','0','0','0','0','base_footprint','base_scan']
-            )
+            output='screen')
         
     ])
 
