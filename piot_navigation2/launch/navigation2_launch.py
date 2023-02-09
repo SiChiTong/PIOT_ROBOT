@@ -27,6 +27,7 @@ def generate_launch_description():
             'piot.yaml'))
 
     nav2_launch_file_dir = os.path.join(get_package_share_directory('nav2_bringup'), 'launch')
+    localization_launch_file_dir = os.path.join(get_package_share_directory('piot_localization'), 'launch')
 
     rviz_config_dir = os.path.join(
         get_package_share_directory('nav2_bringup'),
@@ -125,8 +126,7 @@ def generate_launch_description():
                               'params_file': param_dir}.items()),
 
         IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(os.path.join(nav2_launch_file_dir,
-                                                       'localization_launch.py')),
+            PythonLaunchDescriptionSource(os.path.join(localization_launch_file_dir, 'localization_launch.py')),
             condition=IfCondition(PythonExpression(['not ', slam])),
             launch_arguments={'namespace': namespace,
                               'map': map_dir,
