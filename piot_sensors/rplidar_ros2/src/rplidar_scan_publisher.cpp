@@ -266,6 +266,7 @@ class RPLidarScanPublisher : public rclcpp::Node
         if (!reverse_data) {
             for (size_t i = 0; i < node_count; i++) {
                 float read_value = (float) nodes[i].dist_mm_q2/4.0f/1000;
+                //read_value = 0.0;
                 if (read_value == 0.0)
                     scan_msg->ranges[i] = std::numeric_limits<float>::infinity();
                 else
@@ -275,6 +276,7 @@ class RPLidarScanPublisher : public rclcpp::Node
         } else {
             for (size_t i = 0; i < node_count; i++) {
                 float read_value = (float)nodes[i].dist_mm_q2/4.0f/1000;
+                //read_value = 0.0;
                 if (read_value == 0.0)
                     scan_msg->ranges[node_count-1-i] = std::numeric_limits<float>::infinity();
                 else
@@ -520,4 +522,3 @@ int main(int argc, char * argv[])
   rclcpp::shutdown();
   return ret;
 }
-

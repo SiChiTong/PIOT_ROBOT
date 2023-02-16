@@ -1512,7 +1512,7 @@ u_result RPlidarDriverImplCommon::getAllSupportedScanModes(std::vector<RplidarSc
         RplidarScanMode stdScanModeInfo;
         stdScanModeInfo.id = RPLIDAR_CONF_SCAN_COMMAND_STD;
         stdScanModeInfo.us_per_sample = sampleRateTmp.std_sample_duration_us;
-        stdScanModeInfo.max_distance = 16;
+        stdScanModeInfo.max_distance = 30;
         stdScanModeInfo.ans_type = RPLIDAR_ANS_TYPE_MEASUREMENT;
         strcpy(stdScanModeInfo.scan_mode, "Standard");
         outModes.push_back(stdScanModeInfo);
@@ -1521,7 +1521,7 @@ u_result RPlidarDriverImplCommon::getAllSupportedScanModes(std::vector<RplidarSc
             RplidarScanMode expScanModeInfo;
             expScanModeInfo.id = RPLIDAR_CONF_SCAN_COMMAND_EXPRESS;
             expScanModeInfo.us_per_sample = sampleRateTmp.express_sample_duration_us;
-            expScanModeInfo.max_distance = 16;
+            expScanModeInfo.max_distance = 30;
             expScanModeInfo.ans_type = RPLIDAR_ANS_TYPE_MEASUREMENT_CAPSULED;
             strcpy(expScanModeInfo.scan_mode, "Express");
             outModes.push_back(expScanModeInfo);
@@ -1627,7 +1627,7 @@ u_result RPlidarDriverImplCommon::startScan(bool force, bool useTypicalScan, _u3
             ans = getSampleDuration_uS(sampleRateTmp);
             if(IS_FAIL(ans)) return RESULT_INVALID_DATA;
             outUsedScanMode->us_per_sample = sampleRateTmp.std_sample_duration_us;
-            outUsedScanMode->max_distance = 16;
+            outUsedScanMode->max_distance = 30;
             outUsedScanMode->ans_type = RPLIDAR_ANS_TYPE_MEASUREMENT;
             strcpy(outUsedScanMode->scan_mode, "Standard");
         }
@@ -1692,7 +1692,7 @@ u_result RPlidarDriverImplCommon::startScanExpress(bool force, _u16 scanMode, _u
             if (IS_FAIL(ans)) return RESULT_INVALID_DATA;
 
             outUsedScanMode->us_per_sample = sampleRateTmp.express_sample_duration_us;
-            outUsedScanMode->max_distance = 16;
+            outUsedScanMode->max_distance = 30;
             outUsedScanMode->ans_type = RPLIDAR_ANS_TYPE_MEASUREMENT_CAPSULED;
             strcpy(outUsedScanMode->scan_mode, "Express");
         }
