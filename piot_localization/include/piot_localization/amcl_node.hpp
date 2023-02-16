@@ -307,7 +307,10 @@ protected:
    */
   bool getMaxWeightHyp(
     std::vector<amcl_hyp_t> & hyps, amcl_hyp_t & max_weight_hyps,
-    int & max_weight_hyp);
+    int & max_weight_hyp, double max_weight);  
+  bool getMinWeightHyp(
+    std::vector<amcl_hyp_t> & hyps, amcl_hyp_t & min_weight_hyps,
+    int & min_weight_hyp, double min_weight);
   /*
    * @brief Publish robot pose in map frame from AMCL
    */

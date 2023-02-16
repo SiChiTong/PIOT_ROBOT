@@ -691,40 +691,217 @@ AmclNode::laserReceived(sensor_msgs::msg::LaserScan::ConstSharedPtr laser_scan)
     }
   }
   if (resampled || force_publication || !first_pose_sent_) {
-    amcl_hyp_t max_weight_hyps;
-    std::vector<amcl_hyp_t> hyps;
-    int max_weight_hyp = -1;
-    if (getMaxWeightHyp(hyps, max_weight_hyps, max_weight_hyp)) {
-      publishAmclPose(laser_scan, hyps, max_weight_hyp);
-      calculateMaptoOdomTransform(laser_scan, hyps, max_weight_hyp);
+//////////////////////////////////////////////////////////////////////////////////////////////////
+    int size = (laser_scan->ranges).size();
+    float min = std::numeric_limits<float>::infinity();
+    
+    for(int i=0;i < size; i++)
+    {
+      if(laser_scan->ranges[i] < min)
+        min = laser_scan->ranges[i];
+    }
+    
+    if(min == std::numeric_limits<float>::infinity())
+    {
+      //amclpose publish part
+      // If initial pose is not known, AMCL does not know the current pose
+      if (!initial_pose_is_known_) {
+        if (checkElapsedTime(2s, last_time_printed_msg_)) {
+          RCLCPP_WARN(
+            get_logger(), "AMCL cannot publish a pose or update the transform. "
+            "Please set the initial pose...");
+          last_time_printed_msg_ = now();
+        }
+        return;
+      }
 
-      if (tf_broadcast_ == true) {
-        // We want to send a transform that is good up until a
-        // tolerance time so that odom can be used
-        auto stamp = tf2_ros::fromMsg(laser_scan->header.stamp);
-        tf2::TimePoint transform_expiration = stamp + transform_tolerance_;
-////////////////////////////////////////////////////////////////////////////////////////////////        
+      auto p = std::make_unique<geometry_msgs::msg::PoseWithCovarianceStamped>();
+      // Fill in the header
+      p->header.frame_id = global_frame_id_;
+      p->header.stamp = laser_scan->header.stamp;
+      // Copy in the pose
+      p->pose.pose.position.x = pose.v[0];
+      p->pose.pose.position.y = pose.v[1];
+      p->pose.pose.orientation = orientationAroundZAxis(pose.v[2]);
+      // Copy in the covariance, converting from 3-D to 6-D
+      pf_sample_set_t * set = pf_->sets + pf_->current_set;
+      for (int i = 0; i < 2; i++) {
+        for (int j = 0; j < 2; j++) {
+          // Report the overall filter covariance, rather than the
+          // covariance for the highest-weight cluster
+          // p->covariance[6*i+j] = hyps[max_weight_hyp].pf_pose_cov.m[i][j];
+          p->pose.covariance[6 * i + j] = set->cov.m[i][j];
+        }
+      }
+      p->pose.covariance[6 * 5 + 5] = set->cov.m[2][2];
+      float temp = 0.0;
+      for (auto covariance_value : p->pose.covariance) {
+        temp += covariance_value;
+      }
+      temp += p->pose.pose.position.x + p->pose.pose.position.y;
+      if (!std::isnan(temp)) {
+        RCLCPP_DEBUG(get_logger(), "Publishing pose");
+        last_published_pose_ = *p;
+        first_pose_sent_ = true;
+        pose_pub_->publish(std::move(p));
+      } else {
+        RCLCPP_WARN(
+          get_logger(), "AMCL covariance or pose is NaN, likely due to an invalid "
+          "configuration or faulty sensor measurements! Pose is not available!");
+      }
+
+      RCLCPP_DEBUG(
+        get_logger(), "New pose: %6.3f %6.3f %6.3f",
+        pose.v[0],
+        pose.v[1],
+        pose.v[2]);
+           
+      //tf transform part
+      if (tf_broadcast_ == true)
+      {
         tf2::Quaternion q;
         q.setRPY(0, 0, 0.0);
         tf2::Transform tmp_tf(q, tf2::Vector3(
         0.0,
         0.0,
         0.0));
-        
+      
         latest_tf_ = tmp_tf;
-/////////////////////////////////////////////////////////////////////////////////////////////////        
+        
+        auto stamp = tf2_ros::fromMsg(laser_scan->header.stamp);
+        tf2::TimePoint transform_expiration = stamp + 2 * transform_tolerance_;
         sendMapToOdomTransform(transform_expiration);
         sent_first_transform_ = true;
       }
-    } else {
-      RCLCPP_ERROR(get_logger(), "No pose!");
+      else
+      {
+        RCLCPP_ERROR(get_logger(), "No pose!");
+      }
+      
     }
-  } else if (latest_tf_valid_) {
-    if (tf_broadcast_ == true) {
+//////////////////////////////////////////////////////////////////////////////////////////////////   
+    else
+    {
+      amcl_hyp_t max_weight_hyps;
+      amcl_hyp_t min_weight_hyps;
+      std::vector<amcl_hyp_t> hyps;
+      int max_weight_hyp = -1;
+      int min_weight_hyp = -1;
+      double max_weight = 0.0;
+      double min_weight = 1.0;
+      
+      if (getMaxWeightHyp(hyps, max_weight_hyps, max_weight_hyp, max_weight) && getMinWeightHyp(hyps, min_weight_hyps, min_weight_hyp, min_weight)) 
+      {
+//////////////////////////////////////////////////////////////////////////////////////////////////
+        if (max_weight - min_weight < 0.1)
+        {
+          //amclpose publish part
+          // If initial pose is not known, AMCL does not know the current pose
+          if (!initial_pose_is_known_) {
+            if (checkElapsedTime(2s, last_time_printed_msg_)) {
+              RCLCPP_WARN(
+                get_logger(), "AMCL cannot publish a pose or update the transform. "
+                "Please set the initial pose...");
+              last_time_printed_msg_ = now();
+            }
+            return;
+          }
+    
+          auto p = std::make_unique<geometry_msgs::msg::PoseWithCovarianceStamped>();
+          // Fill in the header
+          p->header.frame_id = global_frame_id_;
+          p->header.stamp = laser_scan->header.stamp;
+          // Copy in the pose
+          p->pose.pose.position.x = pose.v[0];
+          p->pose.pose.position.y = pose.v[1];
+          p->pose.pose.orientation = orientationAroundZAxis(pose.v[2]);
+          // Copy in the covariance, converting from 3-D to 6-D
+          pf_sample_set_t * set = pf_->sets + pf_->current_set;
+          for (int i = 0; i < 2; i++) {
+            for (int j = 0; j < 2; j++) {
+              // Report the overall filter covariance, rather than the
+              // covariance for the highest-weight cluster
+              // p->covariance[6*i+j] = hyps[max_weight_hyp].pf_pose_cov.m[i][j];
+              p->pose.covariance[6 * i + j] = set->cov.m[i][j];
+            }
+          }
+          p->pose.covariance[6 * 5 + 5] = set->cov.m[2][2];
+          float temp = 0.0;
+          for (auto covariance_value : p->pose.covariance) {
+            temp += covariance_value;
+          }
+          temp += p->pose.pose.position.x + p->pose.pose.position.y;
+          if (!std::isnan(temp)) {
+            RCLCPP_DEBUG(get_logger(), "Publishing pose");
+            last_published_pose_ = *p;
+            first_pose_sent_ = true;
+            pose_pub_->publish(std::move(p));
+          } else {
+            RCLCPP_WARN(
+              get_logger(), "AMCL covariance or pose is NaN, likely due to an invalid "
+              "configuration or faulty sensor measurements! Pose is not available!");
+          }
+    
+          RCLCPP_DEBUG(
+            get_logger(), "New pose: %6.3f %6.3f %6.3f",
+            pose.v[0],
+            pose.v[1],
+            pose.v[2]);
+           
+          //tf transform part
+          if (tf_broadcast_ == true)
+          {
+            tf2::Quaternion q;
+            q.setRPY(0, 0, 0.0);
+            tf2::Transform tmp_tf(q, tf2::Vector3(
+            0.0,
+            0.0,
+            0.0));
+      
+            latest_tf_ = tmp_tf;
+        
+            auto stamp = tf2_ros::fromMsg(laser_scan->header.stamp);
+            tf2::TimePoint transform_expiration = stamp + 2 * transform_tolerance_;
+            sendMapToOdomTransform(transform_expiration);
+            sent_first_transform_ = true;
+          }
+          else
+          {
+            RCLCPP_ERROR(get_logger(), "No pose!");
+          }
+        }
+        
+        else
+        {
+          publishAmclPose(laser_scan, hyps, max_weight_hyp);
+          calculateMaptoOdomTransform(laser_scan, hyps, max_weight_hyp);
+  
+          if (tf_broadcast_ == true) 
+          {
+            // We want to send a transform that is good up until a
+            // tolerance time so that odom can be used
+            auto stamp = tf2_ros::fromMsg(laser_scan->header.stamp);
+            tf2::TimePoint transform_expiration = stamp + 2 * transform_tolerance_;
+            sendMapToOdomTransform(transform_expiration);
+            sent_first_transform_ = true;
+          }
+        }
+      } 
+      else 
+      {
+        RCLCPP_ERROR(get_logger(), "No pose!");
+      }
+    }
+  } 
+  
+  else if (latest_tf_valid_) 
+  {
+    if (tf_broadcast_ == true) 
+    {
       // Nothing changed, so we'll just republish the last transform, to keep
       // everybody happy.
       tf2::TimePoint transform_expiration = tf2_ros::fromMsg(laser_scan->header.stamp) +
-        transform_tolerance_;        
+        2 * transform_tolerance_;        
       sendMapToOdomTransform(transform_expiration);
     }
   }
@@ -876,10 +1053,11 @@ AmclNode::publishParticleCloud(const pf_sample_set_t * set)
 bool
 AmclNode::getMaxWeightHyp(
   std::vector<amcl_hyp_t> & hyps, amcl_hyp_t & max_weight_hyps,
-  int & max_weight_hyp)
+  int & max_weight_hyp, double max_weight)
 {
   // Read out the current hypotheses
-  double max_weight = 0.0;
+  //double max_weight = 0.0;
+  max_weight = 0.0;
   hyps.resize(pf_->sets[pf_->current_set].cluster_count);
   for (int hyp_count = 0;
     hyp_count < pf_->sets[pf_->current_set].cluster_count; hyp_count++)
@@ -910,6 +1088,49 @@ AmclNode::getMaxWeightHyp(
       hyps[max_weight_hyp].pf_pose_mean.v[2]);
 
     max_weight_hyps = hyps[max_weight_hyp];
+    return true;
+  }
+  return false;
+}
+
+bool
+AmclNode::getMinWeightHyp(
+  std::vector<amcl_hyp_t> & hyps, amcl_hyp_t & min_weight_hyps,
+  int & min_weight_hyp, double min_weight)
+{
+  // Read out the current hypotheses
+  //double min_weight = 0.0;
+  min_weight = 1.0;
+  hyps.resize(pf_->sets[pf_->current_set].cluster_count);
+  for (int hyp_count = 0;
+    hyp_count < pf_->sets[pf_->current_set].cluster_count; hyp_count++)
+  {
+    double weight;
+    pf_vector_t pose_mean;
+    pf_matrix_t pose_cov;
+    if (!pf_get_cluster_stats(pf_, hyp_count, &weight, &pose_mean, &pose_cov)) {
+      RCLCPP_ERROR(get_logger(), "Couldn't get stats on cluster %d", hyp_count);
+      return false;
+    }
+
+    hyps[hyp_count].weight = weight;
+    hyps[hyp_count].pf_pose_mean = pose_mean;
+    hyps[hyp_count].pf_pose_cov = pose_cov;
+
+    if (hyps[hyp_count].weight < min_weight) {
+      min_weight = hyps[hyp_count].weight;
+      min_weight_hyp = hyp_count;
+    }
+  }
+
+  if (min_weight < 1.0) {
+    RCLCPP_DEBUG(
+      get_logger(), "Min weight pose: %.3f %.3f %.3f",
+      hyps[min_weight_hyp].pf_pose_mean.v[0],
+      hyps[min_weight_hyp].pf_pose_mean.v[1],
+      hyps[min_weight_hyp].pf_pose_mean.v[2]);
+
+    min_weight_hyps = hyps[min_weight_hyp];
     return true;
   }
   return false;
