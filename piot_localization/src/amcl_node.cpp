@@ -759,17 +759,26 @@ AmclNode::laserReceived(sensor_msgs::msg::LaserScan::ConstSharedPtr laser_scan)
       //tf transform part
       if (tf_broadcast_ == true)
       {
+        geometry_msgs::msg::PoseStamped odom_to_map;
         tf2::Quaternion q;
-        q.setRPY(0, 0, 0.0);
+        q.setRPY(0, 0, 0);
         tf2::Transform tmp_tf(q, tf2::Vector3(
         0.0,
         0.0,
         0.0));
-      
-        latest_tf_ = tmp_tf;
         
+        geometry_msgs::msg::PoseStamped tmp_tf_stamped;
+        tmp_tf_stamped.header.frame_id = base_frame_id_;
+        tmp_tf_stamped.header.stamp = laser_scan->header.stamp;
+        tf2::toMsg(tmp_tf.inverse(), tmp_tf_stamped.pose);
+        
+        tf_buffer_->transform(tmp_tf_stamped,odom_to_map,odom_frame_id_);
+        
+        tf2::impl::Converter<true,false>::convert(odom_to_map.pose,latest_tf_);
+        latest_tf_valid_ = true;
+      
         auto stamp = tf2_ros::fromMsg(laser_scan->header.stamp);
-        tf2::TimePoint transform_expiration = stamp + 2 * transform_tolerance_;
+        tf2::TimePoint transform_expiration = stamp + transform_tolerance_;
         sendMapToOdomTransform(transform_expiration);
         sent_first_transform_ = true;
       }
@@ -851,17 +860,26 @@ AmclNode::laserReceived(sensor_msgs::msg::LaserScan::ConstSharedPtr laser_scan)
           //tf transform part
           if (tf_broadcast_ == true)
           {
+            geometry_msgs::msg::PoseStamped odom_to_map;
             tf2::Quaternion q;
-            q.setRPY(0, 0, 0.0);
+            q.setRPY(0, 0, 0);
             tf2::Transform tmp_tf(q, tf2::Vector3(
             0.0,
             0.0,
             0.0));
-      
-            latest_tf_ = tmp_tf;
+        
+            geometry_msgs::msg::PoseStamped tmp_tf_stamped;
+            tmp_tf_stamped.header.frame_id = base_frame_id_;
+            tmp_tf_stamped.header.stamp = laser_scan->header.stamp;
+            tf2::toMsg(tmp_tf.inverse(), tmp_tf_stamped.pose);
+        
+            tf_buffer_->transform(tmp_tf_stamped,odom_to_map,odom_frame_id_);
+        
+            tf2::impl::Converter<true,false>::convert(odom_to_map.pose,latest_tf_);
+            latest_tf_valid_ = true;
         
             auto stamp = tf2_ros::fromMsg(laser_scan->header.stamp);
-            tf2::TimePoint transform_expiration = stamp + 2 * transform_tolerance_;
+            tf2::TimePoint transform_expiration = stamp + transform_tolerance_;
             sendMapToOdomTransform(transform_expiration);
             sent_first_transform_ = true;
           }
@@ -881,7 +899,7 @@ AmclNode::laserReceived(sensor_msgs::msg::LaserScan::ConstSharedPtr laser_scan)
             // We want to send a transform that is good up until a
             // tolerance time so that odom can be used
             auto stamp = tf2_ros::fromMsg(laser_scan->header.stamp);
-            tf2::TimePoint transform_expiration = stamp + 2 * transform_tolerance_;
+            tf2::TimePoint transform_expiration = stamp + transform_tolerance_;
             sendMapToOdomTransform(transform_expiration);
             sent_first_transform_ = true;
           }
@@ -901,7 +919,7 @@ AmclNode::laserReceived(sensor_msgs::msg::LaserScan::ConstSharedPtr laser_scan)
       // Nothing changed, so we'll just republish the last transform, to keep
       // everybody happy.
       tf2::TimePoint transform_expiration = tf2_ros::fromMsg(laser_scan->header.stamp) +
-        2 * transform_tolerance_;        
+        transform_tolerance_;        
       sendMapToOdomTransform(transform_expiration);
     }
   }
